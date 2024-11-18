@@ -256,9 +256,15 @@ int cufinufft2d3_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 
 template int cufinufft2d1_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk,
                                       cufinufft_plan_t<float> *d_plan);
+template int cufinufftf2d1_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                      cufinufft_plan_t<float> *d_plan); 
 template int cufinufft2d1_exec<double>(cuda_complex<double> *d_c,
                                        cuda_complex<double> *d_fk,
                                        cufinufft_plan_t<double> *d_plan);
+template int cufinufftf2d1_exec<double>(cuda_complex<double> *d_c, 
+                                        cuda_complex<double> *d_fk, 
+                                        cuda_complex<double> *d_fw,
+                                        cufinufft_plan_t<double> *d_plan); 
 template int cufinufft2d2_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk,
                                       cufinufft_plan_t<float> *d_plan);
 template int cufinufft2d2_exec<double>(cuda_complex<double> *d_c,
