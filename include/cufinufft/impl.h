@@ -30,6 +30,11 @@ int cufinufft1d3_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 template<typename T>
 int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
                       cufinufft_plan_t<T> *d_plan);
+
+template<typename T>
+int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                      cufinufft_plan_t<T> *d_plan);
+
 template<typename T>
 int cufinufft2d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
                       cufinufft_plan_t<T> *d_plan);
@@ -861,6 +866,55 @@ int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
   } break;
   case 2: {
     if (type == 1) ier = cufinufft2d1_exec<T>(d_c, d_fk, d_plan);
+    if (type == 2) ier = cufinufft2d2_exec<T>(d_c, d_fk, d_plan);
+    if (type == 3) ier = cufinufft2d3_exec<T>(d_c, d_fk, d_plan);
+  } break;
+  case 3: {
+    if (type == 1) ier = cufinufft3d1_exec<T>(d_c, d_fk, d_plan);
+    if (type == 2) ier = cufinufft3d2_exec<T>(d_c, d_fk, d_plan);
+    if (type == 3) ier = cufinufft3d3_exec<T>(d_c, d_fk, d_plan);
+  } break;
+  }
+
+  return ier;
+}
+
+template<typename T>
+int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                           cufinufft_plan_t<T> *d_plan)
+/*
+    "exec" stage (single and double precision versions).
+
+    The actual transformation is done here. Type and dimension of the
+    transformation are defined in d_plan in previous stages.
+
+        See ../docs/cppdoc.md for main user-facing documentation.
+
+    Input/Output:
+    d_c   a size d_plan->M CUFINUFFT_CPX array on gpu (input for Type 1; output for Type
+          2)
+    d_fk  a size d_plan->ms*d_plan->mt*d_plan->mu CUFINUFFT_CPX array on gpu ((input for
+          Type 2; output for Type 1)
+
+    Notes:
+        i) Here CUFINUFFT_CPX is a defined type meaning either complex<float> or
+   complex<double> to match the precision of the library called. ii) All operations are
+   done on the GPU device (hence the d_* names)
+
+    Melody Shih 07/25/19; Barnett 2/16/21.
+*/
+{
+  cufinufft::utils::WithCudaDevice device_swapper(d_plan->opts.gpu_device_id);
+  int ier;
+  int type = d_plan->type;
+  switch (d_plan->dim) {
+  case 1: {
+    if (type == 1) ier = cufinufft1d1_exec<T>(d_c, d_fk, d_plan);
+    if (type == 2) ier = cufinufft1d2_exec<T>(d_c, d_fk, d_plan);
+    if (type == 3) ier = cufinufft1d3_exec<T>(d_c, d_fk, d_plan);
+  } break;
+  case 2: {
+    if (type == 1) ier = cufinufft2d1_exec<T>(d_c, d_fk, d_fw, d_plan);
     if (type == 2) ier = cufinufft2d2_exec<T>(d_c, d_fk, d_plan);
     if (type == 3) ier = cufinufft2d3_exec<T>(d_c, d_fk, d_plan);
   } break;
