@@ -84,6 +84,10 @@ int cufinufftf_extract(cufinufftf_plan d_plan, cuFloatComplex *d_c,
   return cufinufft_execute_impl<float>(d_c, d_fk, d_fw, (cufinufft_plan_t<float> *)d_plan);
 }
 
+int cufinufftf_deconvolve(cufinufftf_plan d_plan, cuFloatComplex *d_fk, cuFloatComplex *d_fw) {
+  return cufinufft_deconvolve_impl<float>(d_fk, d_fw, (cufinufft_plan_t<float> *)d_plan);
+}
+
 int cufinufft_execute(cufinufft_plan d_plan, cuDoubleComplex *d_c,
                       cuda_complex<double> *d_fk) {
   return cufinufft_execute_impl<double>(d_c, d_fk, (cufinufft_plan_t<double> *)d_plan);
