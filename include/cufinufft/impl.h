@@ -36,6 +36,10 @@ int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<
                       cufinufft_plan_t<T> *d_plan);
 
 template<typename T>
+int cufinufft2d1_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                      cufinufft_plan_t<T> *d_plan);
+
+template<typename T>
 int cufinufft2d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
                       cufinufft_plan_t<T> *d_plan);
 
@@ -933,18 +937,18 @@ int cufinufft_deconvolve_impl(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw, cufi
 
   cufinufft::utils::WithCudaDevice device_swapper(d_plan->opts.gpu_device_id);
   int ier;
-
+  int type = d_plan->type;
   switch (d_plan->dim) {
   case 1: {
     ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   case 2: {
     if (type == 1) ier = cufinufft2d1_deconvolve<T>(d_fk, d_fw, d_plan);
-    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID
-    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID
+    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   case 3: {
-    ier = FINUFFT_ERR_METHOD_NOTVALID
+    ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   }
   return ier;
