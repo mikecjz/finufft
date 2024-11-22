@@ -929,6 +929,28 @@ int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_com
 }
 
 template<typename T>
+int cufinufft_deconvolve_impl(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw, cufinufft_plan_t<T> *d_plan) {
+
+  cufinufft::utils::WithCudaDevice device_swapper(d_plan->opts.gpu_device_id);
+  int ier;
+
+  switch (d_plan->dim) {
+  case 1: {
+    ier = FINUFFT_ERR_METHOD_NOTVALID;
+  } break;
+  case 2: {
+    if (type == 1) ier = cufinufft2d1_deconvolve<T>(d_fk, d_fw, d_plan);
+    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID
+    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID
+  } break;
+  case 3: {
+    ier = FINUFFT_ERR_METHOD_NOTVALID
+  } break;
+  }
+  return ier;
+}
+
+template<typename T>
 int cufinufft_destroy_impl(cufinufft_plan_t<T> *d_plan)
 /*
     "destroy" stage (single and double precision versions).
