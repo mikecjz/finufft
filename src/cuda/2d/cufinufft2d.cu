@@ -78,7 +78,7 @@ int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 }
 
 template<typename T>
-int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+int cufinufft2d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
                       cufinufft_plan_t<T> *d_plan)
 /*
     2D Type-1 NUFFT, spreaded weight hijacking
@@ -170,7 +170,10 @@ int cufinufft2d1_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
     d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt;
     d_plan->fk  = d_fkstart;
 
-    d_plan->fw = d_fwstart;
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_plan->fw, d_fwstart, d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
 
     // Step 3: deconvolve and shuffle
     if (d_plan->opts.modeord == 0) {
@@ -296,12 +299,12 @@ int cufinufft2d3_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 
 template int cufinufft2d1_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk,
                                       cufinufft_plan_t<float> *d_plan);
-template int cufinufft2d1_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
-                                      cufinufft_plan_t<float> *d_plan); 
 template int cufinufft2d1_exec<double>(cuda_complex<double> *d_c,
                                        cuda_complex<double> *d_fk,
                                        cufinufft_plan_t<double> *d_plan);
-template int cufinufft2d1_exec<double>(cuda_complex<double> *d_c, 
+template int cufinufft2d1_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                      cufinufft_plan_t<float> *d_plan); 
+template int cufinufft2d1_extract<double>(cuda_complex<double> *d_c, 
                                         cuda_complex<double> *d_fk, 
                                         cuda_complex<double> *d_fw,
                                         cufinufft_plan_t<double> *d_plan); 

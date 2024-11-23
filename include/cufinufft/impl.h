@@ -32,7 +32,7 @@ int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
                       cufinufft_plan_t<T> *d_plan);
 
 template<typename T>
-int cufinufft2d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+int cufinufft2d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
                       cufinufft_plan_t<T> *d_plan);
 
 template<typename T>
@@ -884,7 +884,7 @@ int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 }
 
 template<typename T>
-int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+int cufinufft_extract_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
                            cufinufft_plan_t<T> *d_plan)
 /*
     "exec" stage (single and double precision versions).
@@ -913,19 +913,19 @@ int cufinufft_execute_impl(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_com
   int type = d_plan->type;
   switch (d_plan->dim) {
   case 1: {
-    if (type == 1) ier = cufinufft1d1_exec<T>(d_c, d_fk, d_plan);
-    if (type == 2) ier = cufinufft1d2_exec<T>(d_c, d_fk, d_plan);
-    if (type == 3) ier = cufinufft1d3_exec<T>(d_c, d_fk, d_plan);
+    if (type == 1) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   case 2: {
-    if (type == 1) ier = cufinufft2d1_exec<T>(d_c, d_fk, d_fw, d_plan);
-    if (type == 2) ier = cufinufft2d2_exec<T>(d_c, d_fk, d_plan);
-    if (type == 3) ier = cufinufft2d3_exec<T>(d_c, d_fk, d_plan);
+    if (type == 1) ier = cufinufft2d1_extract<T>(d_c, d_fk, d_fw, d_plan);
+    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   case 3: {
-    if (type == 1) ier = cufinufft3d1_exec<T>(d_c, d_fk, d_plan);
-    if (type == 2) ier = cufinufft3d2_exec<T>(d_c, d_fk, d_plan);
-    if (type == 3) ier = cufinufft3d3_exec<T>(d_c, d_fk, d_plan);
+    if (type == 1) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 2) ier = FINUFFT_ERR_METHOD_NOTVALID;
+    if (type == 3) ier = FINUFFT_ERR_METHOD_NOTVALID;
   } break;
   }
 
