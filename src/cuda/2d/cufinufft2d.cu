@@ -119,9 +119,12 @@ int cufinufft2d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_compl
     if (d_plan->opts.gpu_spreadinterponly)
         continue;
 
+    if (d_plan->opts.debug)
+      fprintf(stderr, "Spreading Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
+
     // Copy batched plan->fw to d_fw
     if ((ier = checkCudaErrors(cudaMemcpyAsync(
-      d_fwstart, d_plan->fw, d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * sizeof(cuda_complex<T>),
+      d_fwstart, d_plan->fw, blksize * d_plan->nf1 * d_plan->nf2 * sizeof(cuda_complex<T>),
       cudaMemcpyDeviceToDevice, stream))))
       return ier;
     
@@ -169,9 +172,12 @@ int cufinufft2d1_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
     d_plan->fk  = d_fkstart;
 
     if ((ier = checkCudaErrors(cudaMemcpyAsync(
-      d_plan->fw, d_fwstart, d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * sizeof(cuda_complex<T>),
+      d_plan->fw, d_fwstart, blksize * d_plan->nf1 * d_plan->nf2 * sizeof(cuda_complex<T>),
       cudaMemcpyDeviceToDevice, stream))))
       return ier;
+
+    if (d_plan->opts.debug)
+      fprintf(stderr, "Deconvolving Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
 
     // Step 3: deconvolve and shuffle
     if (d_plan->opts.modeord == 0) {
