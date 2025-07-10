@@ -72,6 +72,120 @@ int cufinufft3d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
   return 0;
 }
 
+
+template<typename T>
+int cufinufft3d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                      cufinufft_plan_t<T> *d_plan)
+/*
+    3D Type-1 NUFFT, spreaded weight hijacking
+
+    This function is called in "exec" stage (See ../cufinufft.cu).
+    It includes (copied from doc in finufft library)
+        Step 1: spread data to oversampled regular mesh using kernel and hijack. Output stored in fw.
+
+    Junzhou Chen 07/10/25
+*/
+{
+  assert(d_plan->spopts.spread_direction == 1);
+  auto &stream = d_plan->stream;
+  int ier;
+  cuda_complex<T> *d_fkstart;
+  cuda_complex<T> *d_cstart;
+  cuda_complex<T> *d_fwstart;
+  for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
+    int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
+    d_cstart    = d_c + i * d_plan->batchsize * d_plan->M;
+    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
+    d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
+
+    d_plan->c  = d_cstart;
+    d_plan->fk = d_fkstart;   
+    if (d_plan->opts.gpu_spreadinterponly)
+      d_plan->fw = d_fkstart; 
+
+    if ((ier = checkCudaErrors(cudaMemsetAsync(
+             d_plan->fw, 0, d_plan->batchsize * d_plan->nf * sizeof(cuda_complex<T>),
+             stream))))
+      return ier;
+
+    // Step 1: Spread
+    if ((ier = cuspread3d<T>(d_plan, blksize))) return ier;
+
+    if (d_plan->opts.gpu_spreadinterponly) continue; // skip steps 2 and 3
+    if (d_plan->opts.debug)
+      fprintf(stderr, "Spreading Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
+
+    // Copy batched plan->fw to d_fw
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_fwstart, d_plan->fw, blksize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3 * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
+
+    
+    // Step 2: FFT
+    // cufftResult cufft_status =
+    //     cufft_ex(d_plan->fftplan, d_plan->fw, d_plan->fw, d_plan->iflag);
+    // if (cufft_status != CUFFT_SUCCESS) return FINUFFT_ERR_CUDA_FAILURE;
+
+    // // Step 3: deconvolve and shuffle
+    // if (d_plan->opts.modeord == 0) {
+    //   if ((ier = cudeconvolve3d<T, 0>(d_plan, blksize))) return ier;
+    // } else {
+    //   if ((ier = cudeconvolve3d<T, 1>(d_plan, blksize))) return ier;
+    // }
+  }
+
+  return 0;
+}
+
+template<typename T>
+int cufinufft3d1_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                      cufinufft_plan_t<T> *d_plan)
+/*
+    Only executing 3D Deconvolution process from the Type-1 NUFFT
+
+    This function is called in "exec" stage (See ../cufinufft.cu).
+    It includes (copied from doc in finufft library)
+        Step 1: deconvolve by division of each Fourier mode independently by the
+                Fourier series coefficient of the kernel.
+
+    Junzhou Chen 07/10/25
+*/
+{
+  assert(d_plan->spopts.spread_direction == 1);
+
+  int ier;
+  cuda_complex<T> *d_fkstart;
+  cuda_complex<T> *d_fwstart;
+
+  auto &stream = d_plan->stream;
+  for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
+    int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
+    d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
+    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
+    d_plan->fk  = d_fkstart;
+
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_plan->fw, d_fwstart, blksize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3 * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
+
+    if (d_plan->opts.debug)
+      fprintf(stderr, "Deconvolving Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
+
+    // Step 3: deconvolve and shuffle
+    if (d_plan->opts.modeord == 0) {
+      if ((ier = cudeconvolve3d<T, 0>(d_plan, blksize))) return ier;
+    } else {
+      if ((ier = cudeconvolve3d<T, 1>(d_plan, blksize))) return ier;
+    }
+  }
+  return 0;
+}
+
+
+
+
 template<typename T>
 int cufinufft3d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
                       cufinufft_plan_t<T> *d_plan)
@@ -187,6 +301,20 @@ template int cufinufft3d1_exec<float>(cuda_complex<float> *d_c, cuda_complex<flo
 template int cufinufft3d1_exec<double>(cuda_complex<double> *d_c,
                                        cuda_complex<double> *d_fk,
                                        cufinufft_plan_t<double> *d_plan);
+
+
+template int cufinufft3d1_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                        cufinufft_plan_t<float> *d_plan); 
+template int cufinufft3d1_extract<double>(cuda_complex<double> *d_c, 
+                                          cuda_complex<double> *d_fk, 
+                                          cuda_complex<double> *d_fw,
+                                          cufinufft_plan_t<double> *d_plan); 
+template int cufinufft3d1_deconvolve<float>(cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                            cufinufft_plan_t<float> *d_plan);
+template int cufinufft3d1_deconvolve<double>(cuda_complex<double> *d_fk, cuda_complex<double> *d_fw,
+                                            cufinufft_plan_t<double> *d_plan);
+
+
 
 template int cufinufft3d2_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk,
                                       cufinufft_plan_t<float> *d_plan);

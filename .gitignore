@@ -33,6 +33,9 @@ docs/_build
 
 build/
 .vscode/
+.cache/
+compile_commands.json
+.clangd
 
 cufinufft/python/cufinufft/docs/_build
 cufinufft/python/cufinufft/docs/_static
