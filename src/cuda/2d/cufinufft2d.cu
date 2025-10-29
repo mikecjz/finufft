@@ -189,6 +189,51 @@ int cufinufft2d1_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
   return 0;
 }
 
+template<typename T>
+int cufinufft2d2_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+                      cufinufft_plan_t<T> *d_plan)
+/*
+    Only executing 2D Deconvolution process from the Type-2 NUFFT
+
+    This function is called in "exec" stage (See ../cufinufft.cu).
+    It includes (copied from doc in finufft library)
+        Step 1: deconvolve by division of each Fourier mode independently by the
+                Fourier series coefficient of the kernel.
+
+    Junzhou Chen 10/29/25
+*/
+{
+  assert(d_plan->spopts.spread_direction == 1);
+
+  int ier;
+  cuda_complex<T> *d_fkstart;
+  cuda_complex<T> *d_fwstart;
+
+  auto &stream = d_plan->stream;
+  for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
+    int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
+    d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2;
+    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt;
+    d_plan->fk  = d_fkstart;
+
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_plan->fk, d_fkstart, blksize * d_plan->ms * d_plan->mt * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
+
+    if (d_plan->opts.debug)
+      fprintf(stderr, "Deconvolving Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
+
+    // Step 3: deconvolve and shuffle
+    if (d_plan->opts.modeord == 0) {
+      if ((ier = cudeconvolve2d<T, 0>(d_plan, blksize))) return ier;
+    } else {
+      if ((ier = cudeconvolve2d<T, 1>(d_plan, blksize))) return ier;
+    }
+  }
+  return 0;
+}
+
 
 template<typename T>
 int cufinufft2d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
@@ -315,6 +360,11 @@ template int cufinufft2d1_deconvolve<float>(cuda_complex<float> *d_fk, cuda_comp
                                             cufinufft_plan_t<float> *d_plan);
 template int cufinufft2d1_deconvolve<double>(cuda_complex<double> *d_fk, cuda_complex<double> *d_fw,
                                             cufinufft_plan_t<double> *d_plan);
+template int cufinufft2d2_deconvolve<float>(cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                              cufinufft_plan_t<float> *d_plan);
+template int cufinufft2d2_deconvolve<double>(cuda_complex<double> *d_fk, cuda_complex<double> *d_fw,
+                                              cufinufft_plan_t<double> *d_plan);
+                                            
 template int cufinufft2d2_exec<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk,
                                       cufinufft_plan_t<float> *d_plan);
 template int cufinufft2d2_exec<double>(cuda_complex<double> *d_c,
