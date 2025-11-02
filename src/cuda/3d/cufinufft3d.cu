@@ -208,12 +208,12 @@ int cufinufft3d2_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
     int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
     d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
     d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
-    d_plan->fw  = d_fwstart;
+    d_plan->fk  = d_fkstart;
 
-    if ((ier = checkCudaErrors(cudaMemcpyAsync(
-      d_plan->fk, d_fkstart, blksize * d_plan->ms * d_plan->mt * d_plan->mu * sizeof(cuda_complex<T>),
-      cudaMemcpyDeviceToDevice, stream))))
-      return ier;
+    // if ((ier = checkCudaErrors(cudaMemcpyAsync(
+    //   d_plan->fk, d_fkstart, blksize * d_plan->ms * d_plan->mt * d_plan->mu * sizeof(cuda_complex<T>),
+    //   cudaMemcpyDeviceToDevice, stream))))
+    //   return ier;
 
     if (d_plan->opts.debug)
       fprintf(stderr, "Deconvolving Batch %d , blksize %d, batchsize %d\n", i, blksize, d_plan->batchsize);
@@ -224,6 +224,12 @@ int cufinufft3d2_deconvolve(cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
     } else {
       if ((ier = cudeconvolve3d<T, 1>(d_plan, blksize))) return ier;
     }
+
+    // Copy batched plan->fw to d_fw
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_fwstart, d_plan->fw, blksize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3 * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
   }
   return 0;
 }
