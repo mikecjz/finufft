@@ -318,6 +318,7 @@ int cufinufft3d2_extract(cuda_complex<T> *d_c,
     int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
     d_cstart    = d_c + i * d_plan->batchsize * d_plan->M;
     d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
+    d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
 
     d_plan->c  = d_cstart;
     d_plan->fw = d_fwstart;
