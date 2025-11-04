@@ -9,7 +9,7 @@ include(CMakeDependentOption)
 # gersemi: off
 # All options go here sphinx tag (don't remove): @cmake_opts_start
 option(FINUFFT_BUILD_FORTRAN "Whether to build the FINUFFT Fortran examples" OFF)
-option(FINUFFT_BUILD_MATLAB "Whether to build the FINUFFT Matlab interface" OFF)
+option(FINUFFT_BUILD_MATLAB "Whether to build the FINUFFT Matlab interface" ON)
 option(FINUFFT_BUILD_PYTHON "Whether the Python wrapper should be built." OFF)
 option(FINUFFT_ENABLE_SANITIZERS "Whether to enable sanitizers, only effective for Debug configuration." OFF)
 option(FINUFFT_USE_OPENMP "Whether to use OpenMP for parallelization. If disabled, the finufft library will be single threaded. This does not affect the choice of FFTW library." ON)

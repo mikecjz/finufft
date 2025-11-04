@@ -37,6 +37,8 @@ build/
 compile_commands.json
 .clangd
 
+matlab/*.mexa64
+
 cufinufft/python/cufinufft/docs/_build
 cufinufft/python/cufinufft/docs/_static
 cufinufft/python/cufinufft/docs/_templates

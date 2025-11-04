@@ -288,6 +288,53 @@ int cufinufft3d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
   return 0;
 }
 
+template<typename T>
+int cufinufft3d2_extract(cuda_complex<T> *d_c, 
+                        cuda_complex<T> *d_fk, 
+                        cuda_complex<T> *d_fw,
+                        cufinufft_plan_t<T> *d_plan)
+/*
+    2D Type-2 NUFFT
+
+    This function is called in "exec" stage (See ../cufinufft.cu).
+    It includes (copied from doc in finufft library)
+        Step 1: deconvolve (amplify) each Fourier mode, dividing by kernel
+                Fourier coeff
+        Step 2: compute FFT on uniform mesh
+        Step 3: interpolate data to regular mesh
+
+    Melody Shih 07/25/19
+*/
+{
+  assert(d_plan->spopts.spread_direction == 2);
+
+  int ier;
+  cuda_complex<T> *d_fkstart;
+  cuda_complex<T> *d_cstart;
+  cuda_complex<T> *d_fwstart;
+  auto &stream = d_plan->stream;
+
+  for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
+    int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
+    d_cstart    = d_c + i * d_plan->batchsize * d_plan->M;
+    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
+
+    d_plan->c  = d_cstart;
+    d_plan->fw = d_fwstart;
+
+    // Copy d_fw to d_plan->fw
+    if ((ier = checkCudaErrors(cudaMemcpyAsync(
+      d_plan->fw, d_fwstart, blksize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3 * sizeof(cuda_complex<T>),
+      cudaMemcpyDeviceToDevice, stream))))
+      return ier;
+
+    // Step 3: Interpolate
+    if ((ier = cuinterp3d<T>(d_plan, blksize))) return ier;
+  }
+
+  return 0;
+}
+
 // TODO: in case data is centered, we could save GPU memory
 template<typename T>
 int cufinufft3d3_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
@@ -377,6 +424,10 @@ template int cufinufft3d2_exec<float>(cuda_complex<float> *d_c, cuda_complex<flo
 template int cufinufft3d2_exec<double>(cuda_complex<double> *d_c,
                                        cuda_complex<double> *d_fk,
                                        cufinufft_plan_t<double> *d_plan);
+template int cufinufft3d2_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+                                        cufinufft_plan_t<float> *d_plan);
+template int cufinufft3d2_extract<double>(cuda_complex<double> *d_c, cuda_complex<double> *d_fk, cuda_complex<double> *d_fw,
+                                        cufinufft_plan_t<double> *d_plan);
 
 template int cufinufft3d3_exec(cuda_complex<double> *d_c, cuda_complex<double> *d_fk,
                                cufinufft_plan_t<double> *d_plan);
