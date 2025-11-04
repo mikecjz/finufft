@@ -79,9 +79,8 @@ int cufinufftf_execute(cufinufftf_plan d_plan, cuFloatComplex *d_c,
   return cufinufft_execute_impl<float>(d_c, d_fk, (cufinufft_plan_t<float> *)d_plan);
 }
 
-int cufinufftf_extract(cufinufftf_plan d_plan, cuFloatComplex *d_c,
-                       cuFloatComplex *d_fk, cuFloatComplex *d_fw) {
-  return cufinufft_extract_impl<float>(d_c, d_fk, d_fw, (cufinufft_plan_t<float> *)d_plan);
+int cufinufftf_extract(cufinufftf_plan d_plan, cuFloatComplex *d_c, cuFloatComplex *d_fw) {
+  return cufinufft_extract_impl<float>(d_c, d_fw, (cufinufft_plan_t<float> *)d_plan);
 }
 
 int cufinufftf_deconvolve(cufinufftf_plan d_plan, cuFloatComplex *d_fk, cuFloatComplex *d_fw) {

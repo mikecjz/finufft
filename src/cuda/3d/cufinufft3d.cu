@@ -74,7 +74,7 @@ int cufinufft3d1_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 
 
 template<typename T>
-int cufinufft3d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_complex<T> *d_fw,
+int cufinufft3d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fw,
                       cufinufft_plan_t<T> *d_plan)
 /*
     3D Type-1 NUFFT, spreaded weight hijacking
@@ -89,19 +89,15 @@ int cufinufft3d1_extract(cuda_complex<T> *d_c, cuda_complex<T> *d_fk, cuda_compl
   assert(d_plan->spopts.spread_direction == 1);
   auto &stream = d_plan->stream;
   int ier;
-  cuda_complex<T> *d_fkstart;
   cuda_complex<T> *d_cstart;
   cuda_complex<T> *d_fwstart;
   for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
     int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
     d_cstart    = d_c + i * d_plan->batchsize * d_plan->M;
-    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
     d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
 
     d_plan->c  = d_cstart;
-    d_plan->fk = d_fkstart;   
-    if (d_plan->opts.gpu_spreadinterponly)
-      d_plan->fw = d_fkstart; 
+
 
     if ((ier = checkCudaErrors(cudaMemsetAsync(
              d_plan->fw, 0, d_plan->batchsize * d_plan->nf * sizeof(cuda_complex<T>),
@@ -290,7 +286,6 @@ int cufinufft3d2_exec(cuda_complex<T> *d_c, cuda_complex<T> *d_fk,
 
 template<typename T>
 int cufinufft3d2_extract(cuda_complex<T> *d_c, 
-                        cuda_complex<T> *d_fk, 
                         cuda_complex<T> *d_fw,
                         cufinufft_plan_t<T> *d_plan)
 /*
@@ -309,7 +304,6 @@ int cufinufft3d2_extract(cuda_complex<T> *d_c,
   assert(d_plan->spopts.spread_direction == 2);
 
   int ier;
-  cuda_complex<T> *d_fkstart;
   cuda_complex<T> *d_cstart;
   cuda_complex<T> *d_fwstart;
   auto &stream = d_plan->stream;
@@ -317,11 +311,9 @@ int cufinufft3d2_extract(cuda_complex<T> *d_c,
   for (int i = 0; i * d_plan->batchsize < d_plan->ntransf; i++) {
     int blksize = min(d_plan->ntransf - i * d_plan->batchsize, d_plan->batchsize);
     d_cstart    = d_c + i * d_plan->batchsize * d_plan->M;
-    d_fkstart   = d_fk + i * d_plan->batchsize * d_plan->ms * d_plan->mt * d_plan->mu;
     d_fwstart   = d_fw + i * d_plan->batchsize * d_plan->nf1 * d_plan->nf2 * d_plan->nf3;
 
     d_plan->c  = d_cstart;
-    d_plan->fw = d_fwstart;
 
     // Copy d_fw to d_plan->fw
     if ((ier = checkCudaErrors(cudaMemcpyAsync(
@@ -402,10 +394,9 @@ template int cufinufft3d1_exec<double>(cuda_complex<double> *d_c,
                                        cufinufft_plan_t<double> *d_plan);
 
 
-template int cufinufft3d1_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+template int cufinufft3d1_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fw,
                                         cufinufft_plan_t<float> *d_plan); 
 template int cufinufft3d1_extract<double>(cuda_complex<double> *d_c, 
-                                          cuda_complex<double> *d_fk, 
                                           cuda_complex<double> *d_fw,
                                           cufinufft_plan_t<double> *d_plan); 
 template int cufinufft3d1_deconvolve<float>(cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
@@ -425,9 +416,9 @@ template int cufinufft3d2_exec<float>(cuda_complex<float> *d_c, cuda_complex<flo
 template int cufinufft3d2_exec<double>(cuda_complex<double> *d_c,
                                        cuda_complex<double> *d_fk,
                                        cufinufft_plan_t<double> *d_plan);
-template int cufinufft3d2_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fk, cuda_complex<float> *d_fw,
+template int cufinufft3d2_extract<float>(cuda_complex<float> *d_c, cuda_complex<float> *d_fw,
                                         cufinufft_plan_t<float> *d_plan);
-template int cufinufft3d2_extract<double>(cuda_complex<double> *d_c, cuda_complex<double> *d_fk, cuda_complex<double> *d_fw,
+template int cufinufft3d2_extract<double>(cuda_complex<double> *d_c, cuda_complex<double> *d_fw,
                                         cufinufft_plan_t<double> *d_plan);
 
 template int cufinufft3d3_exec(cuda_complex<double> *d_c, cuda_complex<double> *d_fk,
