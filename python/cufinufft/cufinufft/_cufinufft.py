@@ -101,6 +101,7 @@ def _get_NufftOpts():
         ("gpu_maxsubprobsize", c_int),
         ("gpu_kerevalmeth", c_int),
         ("gpu_spreadinterponly", c_int),
+        ("gpu_no_cropping", c_int),
         ("gpu_maxbatchsize", c_int),
         ("gpu_device_id", c_int),
         ("gpu_stream", c_void_p),
@@ -199,3 +200,11 @@ _destroy_plan.restype = c_int
 _destroy_planf = lib.cufinufftf_destroy
 _destroy_planf.argtypes = [c_void_p]
 _destroy_planf.restype = c_int
+
+_get_out_modes = lib.cufinufft_get_out_modes
+_get_out_modes.argtypes = [c_void_p, c_int64_p]
+_get_out_modes.restype = c_int
+
+_get_out_modesf = lib.cufinufftf_get_out_modes
+_get_out_modesf.argtypes = [c_void_p, c_int64_p]
+_get_out_modesf.restype = c_int

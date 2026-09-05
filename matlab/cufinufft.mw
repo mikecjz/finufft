@@ -68,6 +68,9 @@ $     }
 $     else if (strcmp(fname[ifield],"gpu_spreadinterponly") == 0) {
 $       oc->gpu_spreadinterponly = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
 $     }
+$     else if (strcmp(fname[ifield],"gpu_no_cropping") == 0) {
+$       oc->gpu_no_cropping = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
+$     }
 $     else if (strcmp(fname[ifield],"modeord") == 0) {
 $       oc->modeord = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
 $     }
@@ -133,6 +136,9 @@ classdef cufinufft_plan < handle
     type
     dim
     n_modes         % 3-element array, 1's in the unused dims
+    n_modes_out     % 3-element array: type 1/2 output extent. Same as n_modes,
+                    % except a type 1 with opts.gpu_no_cropping, where it is the
+                    % upsampled fine grid (nf1,nf2,nf3).
     n_trans
     nj              % number of NU pts (type 1,2), or input NU pts (type 3)
     nk              % number of output NU pts (type 3)
@@ -195,6 +201,20 @@ classdef cufinufft_plan < handle
       end
       # delete(cufinufft_opts* o);
       errhandler(ier);             % convert C++ codes to matlab-style errors
+      % The output extent is n_modes, except for a type 1 with gpu_no_cropping,
+      % where it is the fine grid -- whose size depends on upsampfac, the kernel
+      % width and next235 rounding, so ask the library rather than predict it.
+      plan.n_modes_out = n_modes;
+      if type~=3
+        n_modes_out = zeros(3,1);
+        if strcmp(plan.floatprec,'double')
+          # int ier = cufinufft_get_out_modes(cufinufft_plan plan, output int64_t[3] n_modes_out);
+        else
+          # int ier = cufinufftf_get_out_modes(cufinufftf_plan plan, output int64_t[3] n_modes_out);
+        end
+        errhandler(ier);
+        plan.n_modes_out = double(n_modes_out(:));
+      end
     end
 
     function setpts(plan, xj, yj, zj, s, t, u)
@@ -241,14 +261,16 @@ classdef cufinufft_plan < handle
       % get shape info from the matlab-side plan (since can't pass "dot"
       % variables like a.b as mwrap sizes, too)...
       ms = plan.n_modes(1); mt = plan.n_modes(2); mu = plan.n_modes(3);
+      % output extent: differs from (ms,mt,mu) only for type 1 + gpu_no_cropping
+      os = plan.n_modes_out(1); ot = plan.n_modes_out(2); ou = plan.n_modes_out(3);
       nj = plan.nj; nk = plan.nk; n_trans = plan.n_trans;
 
       % check data input length...
       if plan.type==1 || plan.type==2
-        ncoeffs = ms*mt*mu*n_trans;    % total # Fourier coeffs
+        ncoeffs = os*ot*ou*n_trans;    % total # Fourier coeffs written/read
       end
       if plan.type==2
-        ninputs = ncoeffs;
+        ninputs = ms*mt*mu*n_trans;    % type 2 always reads the mode grid
       else
         ninputs = n_trans*nj;
       end
@@ -262,7 +284,7 @@ classdef cufinufft_plan < handle
           # int ier = cufinufftf_execute(cufinufftf_plan plan, gpu fcomplex[] data_in, gpu output fcomplex[ncoeffs] result);
         end
         % make modes output correct shape; when d<3 squeeze removes unused dims...
-        result = squeeze(reshape(result, [ms mt mu n_trans]));
+        result = squeeze(reshape(result, [os ot ou n_trans]));
       elseif plan.type == 2
         if strcmp(plan.floatprec,'double')
           # int ier = cufinufft_execute(cufinufft_plan plan, gpu output dcomplex[nj, n_trans] result, gpu dcomplex[] data_in);

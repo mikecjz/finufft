@@ -386,6 +386,9 @@ while ``modeord=1`` selects FFT-style ordering starting at zero and wrapping ove
 **gpu_spreadinterponly**: [Only has effect for type 1 or 2.] For experts only. If ``0`` do the NUFFT as intended. If ``1``, do *only* spreading (if ``type=1``) or *only* interpolation (if ``type=2``), using kernel shape parameters set by ``tol`` and ``upsampfac``; the result is not upsampled and is not a NUFFT.
 It is analogous to the CPU option named :ref:`spreadinterponly<sionly>` (please read that documentation!). [This flag is also internally used for GPU type 3 transforms, although it was originally a debug flag.]
 
+.. _gpu_no_cropping:
+
+**gpu_no_cropping**: [Only has effect for type 1.] If ``0`` (default), the transform behaves normally: after the fine grid of size ``nf1*nf2*nf3`` is deconvolved it is cropped to the ``ms*mt*mu`` modes you requested. If ``1``, the crop is skipped and the *whole* deconvolved fine grid is written to ``fk``, which must therefore be allocated with ``nf1*nf2*nf3`` (times ``ntr``) complex elements rather than ``ms*mt*mu``. Since ``nf1,nf2,nf3`` depend on ``upsampfac``, the kernel width implied by ``tol``, and 2/3/5-smooth rounding, you cannot predict them: call ``cufinufft_get_out_modes`` on the plan to get the extent to allocate. Mode ordering follows ``modeord`` as usual, applied to the fine grid; with ``modeord=1`` the output is exactly the raw deconvolved fine grid in FFT order. Combining this with ``gpu_spreadinterponly``, or using it with type 2 or 3, returns ``FINUFFT_ERR_INVALID_ARGUMENT``.
 
 Algorithm performance options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

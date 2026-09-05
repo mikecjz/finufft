@@ -161,6 +161,9 @@ classdef cufinufft_plan < handle
     type
     dim
     n_modes         % 3-element array, 1's in the unused dims
+    n_modes_out     % 3-element array: type 1/2 output extent. Same as n_modes,
+                    % except a type 1 with opts.gpu_no_cropping, where it is the
+                    % upsampled fine grid (nf1,nf2,nf3).
     n_trans
     nj              % number of NU pts (type 1,2), or input NU pts (type 3)
     nk              % number of output NU pts (type 3)
@@ -232,6 +235,22 @@ cufinufft(mex_id_, opts, o);
       mex_id_ = 'delete(c i cufinufft_opts*)';
 cufinufft(mex_id_, o);
       errhandler(ier);             % convert C++ codes to matlab-style errors
+      % The output extent is n_modes, except for a type 1 with gpu_no_cropping,
+      % where it is the fine grid -- whose size depends on upsampfac, the kernel
+      % width and next235 rounding, so ask the library rather than predict it.
+      plan.n_modes_out = n_modes;
+      if type~=3
+        n_modes_out = zeros(3,1);
+        if strcmp(plan.floatprec,'double')
+          mex_id_ = 'c o int = cufinufft_get_out_modes(c i cufinufft_plan, c o int64_t[x])';
+[ier, n_modes_out] = cufinufft(mex_id_, plan, 3);
+        else
+          mex_id_ = 'c o int = cufinufftf_get_out_modes(c i cufinufftf_plan, c o int64_t[x])';
+[ier, n_modes_out] = cufinufft(mex_id_, plan, 3);
+        end
+        errhandler(ier);
+        plan.n_modes_out = double(n_modes_out(:));
+      end
     end
 
     function setpts(plan, xj, yj, zj, s, t, u)
@@ -280,14 +299,16 @@ cufinufft(mex_id_, o);
       % get shape info from the matlab-side plan (since can't pass "dot"
       % variables like a.b as mwrap sizes, too)...
       ms = plan.n_modes(1); mt = plan.n_modes(2); mu = plan.n_modes(3);
+      % output extent: differs from (ms,mt,mu) only for type 1 + gpu_no_cropping
+      os = plan.n_modes_out(1); ot = plan.n_modes_out(2); ou = plan.n_modes_out(3);
       nj = plan.nj; nk = plan.nk; n_trans = plan.n_trans;
 
       % check data input length...
       if plan.type==1 || plan.type==2
-        ncoeffs = ms*mt*mu*n_trans;    % total # Fourier coeffs
+        ncoeffs = os*ot*ou*n_trans;    % total # Fourier coeffs written/read
       end
       if plan.type==2
-        ninputs = ncoeffs;
+        ninputs = ms*mt*mu*n_trans;    % type 2 always reads the mode grid
       else
         ninputs = n_trans*nj;
       end
@@ -303,7 +324,7 @@ cufinufft(mex_id_, o);
 [ier, result] = cufinufft(mex_id_, plan, data_in, ncoeffs);
         end
         % make modes output correct shape; when d<3 squeeze removes unused dims...
-        result = squeeze(reshape(result, [ms mt mu n_trans]));
+        result = squeeze(reshape(result, [os ot ou n_trans]));
       elseif plan.type == 2
         if strcmp(plan.floatprec,'double')
           mex_id_ = 'c o int = cufinufft_execute(c i cufinufft_plan, g o dcomplex[xx], g i dcomplex[])';

@@ -148,6 +148,16 @@ def _invoke_plan(
     n_trans = _get_ntrans(dim, nufft_type, data)
 
     if nufft_type == 1 and out is not None:
+        # Under gpu_no_cropping the output is the fine grid, not the mode grid,
+        # so out.shape can no longer stand in for n_modes. Rather than silently
+        # build a plan for the wrong number of modes, say so.
+        if kwargs and kwargs.get("gpu_no_cropping"):
+            raise TypeError(
+                "gpu_no_cropping cannot be combined with an explicit `out` in the "
+                "simple interface, since the output shape is the upsampled grid "
+                "rather than n_modes. Pass out=None, or use the Plan interface "
+                "and size `out` from Plan.n_modes_out."
+            )
         n_modes = out.shape[-dim:]
     if nufft_type == 2:
         n_modes = data.shape[-dim:]

@@ -8,3 +8,6 @@
 %     opts.gpu_binsize{x,y,z}:  various binsizes in GM-sort/SM (for experts).
 %     opts.gpu_maxbatchsize:   0 (auto, default), or many-vector batch size.
 %     opts.gpu_device_id:  sets the GPU device ID (experts only).
+%     opts.gpu_no_cropping:  (type 1 only) 0 (default) crop the deconvolved fine
+%                    grid to n_modes; 1 return the whole upsampled grid instead
+%                    (its size is plan.n_modes_out).

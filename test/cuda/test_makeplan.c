@@ -179,6 +179,27 @@ int main() {
       cudaDeviceSynchronize();
     }
 
+    { // gpu_no_cropping is type 1 only, and needs a real fine grid to leave uncropped
+      cufinufft_opts opts;
+      int64_t out_modes[3] = {0, 0, 0};
+      cufinufft_default_opts(&opts);
+      opts.gpu_no_cropping = 1;
+      assert(cufinufftf_makeplan(2, dim, N, iflag, ntransf, tol, &plan, &opts) ==
+             FINUFFT_ERR_INVALID_ARGUMENT);
+
+      opts.gpu_spreadinterponly = 1;
+      assert(cufinufftf_makeplan(1, dim, N, iflag, ntransf, tol, &plan, &opts) ==
+             FINUFFT_ERR_INVALID_ARGUMENT);
+
+      // ...and on a valid type 1 it makes the plan report the fine grid instead
+      opts.gpu_spreadinterponly = 0;
+      assert(cufinufftf_makeplan(1, dim, N, iflag, ntransf, tol, &plan, &opts) == 0);
+      assert(cufinufftf_get_out_modes(plan, out_modes) == 0);
+      assert(out_modes[0] > N[0] && out_modes[1] > N[1]);
+      cufinufftf_destroy(plan);
+      cudaDeviceSynchronize();
+    }
+
     // This technique to cause cuda failures works most of the time, but sometimes
     // would break following calls and could cause issues with other contexts using
     // the same GPU

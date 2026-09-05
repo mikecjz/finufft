@@ -1139,6 +1139,9 @@ typedef std::complex<float> fcomplex;
      else if (strcmp(fname[ifield],"gpu_spreadinterponly") == 0) {
        oc->gpu_spreadinterponly = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
      }
+     else if (strcmp(fname[ifield],"gpu_no_cropping") == 0) {
+       oc->gpu_no_cropping = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
+     }
      else if (strcmp(fname[ifield],"modeord") == 0) {
        oc->modeord = (int)round(*mxGetPr(mxGetFieldByNumber(om,idx,ifield)));
      }
@@ -2307,6 +2310,94 @@ mw_err_label:
         mexErrMsgTxt(mw_err_txt_);
 }
 
+/* ---- cufinufft.mw: 211 ----
+ * int ier = cufinufft_get_out_modes(cufinufft_plan plan, output int64_t[3] n_modes_out);
+ */
+static const char* stubids20_ = "c o int = cufinufft_get_out_modes(c i cufinufft_plan, c o int64_t[x])";
+
+void mexStub20(int nlhs, mxArray* plhs[],
+              int nrhs, const mxArray* prhs[])
+{
+    const char* mw_err_txt_ = 0;
+    cufinufft_plan*  in0_ =0; /* plan       */
+    int         out0_;   /* ier        */
+    int64_t*    out1_=0; /* n_modes_out */
+    mwSize      dim1_;   /* 3          */
+
+    dim1_ = (mwSize) mxWrapGetScalar(prhs[1], &mw_err_txt_);
+
+    in0_ = (cufinufft_plan*) mxWrapGetP(prhs[0], "cufinufft_plan:%p", &mw_err_txt_);
+    if (mw_err_txt_)
+        goto mw_err_label;
+
+    if (!in0_) {
+        mw_err_txt_ = "Argument plan cannot be null";
+        goto mw_err_label;
+    }
+    out1_ = (int64_t*) mxMalloc(dim1_*sizeof(int64_t));
+    if (mexprofrecord_)
+        mexprofrecord_[20]++;
+    out0_ = cufinufft_get_out_modes(*in0_, out1_);
+#if MX_HAS_INTERLEAVED_COMPLEX
+    plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
+    *mxGetDoubles(plhs[0]) = out0_;
+#else
+    plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
+    *mxGetPr(plhs[0]) = out0_;
+#endif
+    plhs[1] = mxCreateDoubleMatrix(dim1_, 1, mxREAL);
+    mxWrapCopy_int64_t(plhs[1], out1_, dim1_);
+
+mw_err_label:
+    if (out1_) mxFree(out1_);
+    if (mw_err_txt_)
+        mexErrMsgTxt(mw_err_txt_);
+}
+
+/* ---- cufinufft.mw: 213 ----
+ * int ier = cufinufftf_get_out_modes(cufinufftf_plan plan, output int64_t[3] n_modes_out);
+ */
+static const char* stubids21_ = "c o int = cufinufftf_get_out_modes(c i cufinufftf_plan, c o int64_t[x])";
+
+void mexStub21(int nlhs, mxArray* plhs[],
+              int nrhs, const mxArray* prhs[])
+{
+    const char* mw_err_txt_ = 0;
+    cufinufftf_plan*  in0_ =0; /* plan       */
+    int         out0_;   /* ier        */
+    int64_t*    out1_=0; /* n_modes_out */
+    mwSize      dim1_;   /* 3          */
+
+    dim1_ = (mwSize) mxWrapGetScalar(prhs[1], &mw_err_txt_);
+
+    in0_ = (cufinufftf_plan*) mxWrapGetP(prhs[0], "cufinufftf_plan:%p", &mw_err_txt_);
+    if (mw_err_txt_)
+        goto mw_err_label;
+
+    if (!in0_) {
+        mw_err_txt_ = "Argument plan cannot be null";
+        goto mw_err_label;
+    }
+    out1_ = (int64_t*) mxMalloc(dim1_*sizeof(int64_t));
+    if (mexprofrecord_)
+        mexprofrecord_[21]++;
+    out0_ = cufinufftf_get_out_modes(*in0_, out1_);
+#if MX_HAS_INTERLEAVED_COMPLEX
+    plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
+    *mxGetDoubles(plhs[0]) = out0_;
+#else
+    plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
+    *mxGetPr(plhs[0]) = out0_;
+#endif
+    plhs[1] = mxCreateDoubleMatrix(dim1_, 1, mxREAL);
+    mxWrapCopy_int64_t(plhs[1], out1_, dim1_);
+
+mw_err_label:
+    if (out1_) mxFree(out1_);
+    if (mw_err_txt_)
+        mexErrMsgTxt(mw_err_txt_);
+}
+
 /* ----
  */
 void mexFunction(int nlhs, mxArray* plhs[],
@@ -2359,12 +2450,16 @@ void mexFunction(int nlhs, mxArray* plhs[],
         mexStub18(nlhs,plhs, nrhs-1,prhs+1);
     else if (strcmp(id, stubids19_) == 0)
         mexStub19(nlhs,plhs, nrhs-1,prhs+1);
+    else if (strcmp(id, stubids20_) == 0)
+        mexStub20(nlhs,plhs, nrhs-1,prhs+1);
+    else if (strcmp(id, stubids21_) == 0)
+        mexStub21(nlhs,plhs, nrhs-1,prhs+1);
     else if (strcmp(id, "*profile on*") == 0) {
         if (!mexprofrecord_) {
-            mexprofrecord_ = (int*) malloc(20 * sizeof(int));
+            mexprofrecord_ = (int*) malloc(22 * sizeof(int));
             mexLock();
         }
-        memset(mexprofrecord_, 0, 20 * sizeof(int));
+        memset(mexprofrecord_, 0, 22 * sizeof(int));
     } else if (strcmp(id, "*profile off*") == 0) {
         if (mexprofrecord_) {
             free(mexprofrecord_);
@@ -2392,6 +2487,8 @@ void mexFunction(int nlhs, mxArray* plhs[],
         mexPrintf("%d calls to cufinufft.mw:261\n", mexprofrecord_[17]);
         mexPrintf("%d calls to cufinufft.mw:273\n", mexprofrecord_[18]);
         mexPrintf("%d calls to cufinufft.mw:275\n", mexprofrecord_[19]);
+        mexPrintf("%d calls to cufinufft.mw:211\n", mexprofrecord_[20]);
+        mexPrintf("%d calls to cufinufft.mw:213\n", mexprofrecord_[21]);
     } else if (strcmp(id, "*profile log*") == 0) {
         FILE* logfp;
         if (nrhs != 2 || mxGetString(prhs[1], id, sizeof(id)) != 0)
@@ -2419,6 +2516,8 @@ void mexFunction(int nlhs, mxArray* plhs[],
         fprintf(logfp, "%d calls to cufinufft.mw:261\n", mexprofrecord_[17]);
         fprintf(logfp, "%d calls to cufinufft.mw:273\n", mexprofrecord_[18]);
         fprintf(logfp, "%d calls to cufinufft.mw:275\n", mexprofrecord_[19]);
+        fprintf(logfp, "%d calls to cufinufft.mw:211\n", mexprofrecord_[20]);
+        fprintf(logfp, "%d calls to cufinufft.mw:213\n", mexprofrecord_[21]);
         fclose(logfp);
     } else
         mexErrMsgTxt("Unknown identifier");

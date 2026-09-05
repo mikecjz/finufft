@@ -255,6 +255,25 @@ template<typename T> struct cufinufft_plan_t {
   // FIXME: we want to make this "const" in the future
   void execute(cuda_complex<T> *d_c, cuda_complex<T> *d_fk) const;
 
+  // -- Effective output extent -----------------------------------------------
+  // Normally a type 1 crops the deconvolved fine grid down to the requested
+  // mstu modes. With opts.gpu_no_cropping the whole nf123 grid is emitted
+  // instead, so the caller's fk buffer must be nf1*nf2*nf3 (per transform).
+  // Gating on type==1 keeps type 2 -- and the inner type-2 plan that type 3
+  // builds from a copied opts -- on the usual cropped path by construction.
+  // Public: the C-API getter and the tests read these.
+  int nufft_type() const { return type; }
+  bool no_cropping() const { return opts.gpu_no_cropping && type == 1; }
+  cuda::std::array<CUFINUFFT_BIGINT, 3> out_extent() const {
+    return no_cropping() ? nf123 : mstu;
+  }
+  CUFINUFFT_BIGINT nmodes_out() const {
+    const auto ext         = out_extent();
+    CUFINUFFT_BIGINT total = 1;
+    for (int idim = 0; idim < dim; ++idim) total *= ext[idim];
+    return total;
+  }
+
 private:
   // Worker functions and the POD-copy helper need direct access to private
   // state (mutating prep helpers resize bin/subprob arrays; spread/interp

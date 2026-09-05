@@ -24,6 +24,11 @@ typedef struct cufinufft_opts { // see cufinufft_default_opts() for defaults
 
   int gpu_spreadinterponly; // 0: NUFFT, 1: spread or interpolation only
 
+  int gpu_no_cropping;      // (GPU type 1 only) 0: crop the deconvolved fine grid to
+                            // the requested ms*mt*mu modes (default). 1: skip the crop
+                            // and output the whole nf1*nf2*nf3 upsampled grid, whose
+                            // extent cufinufft_get_out_modes reports.
+
   int gpu_maxbatchsize; // transforms per FFT: 0 auto, >0 used as given (capped at
                         // ntransf), <0 invalid
 

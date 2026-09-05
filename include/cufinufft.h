@@ -37,6 +37,15 @@ FINUFFT_EXPORT int cufinufftf_execute(cufinufftf_plan d_plan, cuFloatComplex *d_
 FINUFFT_EXPORT int cufinufft_destroy(cufinufft_plan d_plan);
 FINUFFT_EXPORT int cufinufftf_destroy(cufinufftf_plan d_plan);
 
+// Effective per-dimension output extent of a type 1 or 2 plan, ie the shape the
+// caller's fk array must have (times ntr). Always writes 3 elements, with 1 in
+// the unused dimensions. This is the requested (ms,mt,mu), except for a type 1
+// built with opts.gpu_no_cropping, where it is the fine grid (nf1,nf2,nf3) --
+// which the caller cannot predict, as it depends on upsampfac, the kernel width
+// and the 2/3/5-smooth rounding in next235. Returns 0, or an error code.
+FINUFFT_EXPORT int cufinufft_get_out_modes(cufinufft_plan d_plan, int64_t *n_modes);
+FINUFFT_EXPORT int cufinufftf_get_out_modes(cufinufftf_plan d_plan, int64_t *n_modes);
+
 // Simple (one-shot) interfaces. Pointers are device pointers. Behavior matches
 // the 4-step plan API above. 36 entry points (3 dims x 3 types x {single,many}
 // x {double,float}).

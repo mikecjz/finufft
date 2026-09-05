@@ -29,6 +29,8 @@ from cufinufft._cufinufft import _set_pts
 from cufinufft._cufinufft import _set_ptsf
 from cufinufft._cufinufft import _exec_plan
 from cufinufft._cufinufft import _exec_planf
+from cufinufft._cufinufft import _get_out_modes
+from cufinufft._cufinufft import _get_out_modesf
 from cufinufft._cufinufft import _destroy_plan
 from cufinufft._cufinufft import _destroy_planf
 
@@ -73,7 +75,10 @@ class Plan:
                         exp(sqrt), Horner evaluation), ``gpu_device_id`` (GPU
                         ID), ``gpu_stream`` (CUDA stream pointer) and
                         ``modeord`` (0: CMCL-compatible mode ordering,
-                        1: FFT-style mode ordering).
+                        1: FFT-style mode ordering) and ``gpu_no_cropping``
+                        (type 1 only, 0: crop the deconvolved fine grid to
+                        ``n_modes``, 1: return the whole upsampled grid, whose
+                        shape is :attr:`n_modes_out`).
 
     The stream given by ``gpu_stream`` is stored as a raw handle that the plan
     does not keep alive: the stream object must outlive the ``Plan``. Execution
@@ -108,12 +113,14 @@ class Plan:
             self._setpts = _set_pts
             self._exec_plan = _exec_plan
             self._destroy_plan = _destroy_plan
+            self._get_out_modes = _get_out_modes
             self._real_dtype: type[np.floating] = np.float64
         elif self._dtype == np.complex64:
             self._make_plan = _make_planf
             self._setpts = _set_ptsf
             self._exec_plan = _exec_planf
             self._destroy_plan = _destroy_planf
+            self._get_out_modes = _get_out_modesf
             self._real_dtype = np.float32
         else:
             raise TypeError("Expected complex64 or complex128.")
@@ -197,6 +204,13 @@ class Plan:
         return self._n_modes
 
     @property
+    def n_modes_out(self) -> tuple[int, ...]:
+        """The shape of this plan's type 1 output, in ``ndarray.shape`` order.
+        Equal to :attr:`n_modes`, except for a type 1 built with
+        ``gpu_no_cropping=1``, where it is the upsampled fine grid."""
+        return self._n_modes_out
+
+    @property
     def n_trans(self) -> int:
         return self._n_trans
 
@@ -244,6 +258,20 @@ class Plan:
 
         if ier != 0:
             raise RuntimeError("Error creating plan.")
+
+        # The effective output extent of a type 1/2 is normally n_modes, but a
+        # type 1 with gpu_no_cropping emits the whole upsampled fine grid, whose
+        # size depends on upsampfac, the kernel width and next235 rounding. Ask
+        # the library rather than trying to predict it.
+        if self._type in (1, 2):
+            _out = (c_int64 * 3)(0, 0, 0)
+            ier = self._get_out_modes(self._plan, _out)
+            if ier != 0:
+                raise RuntimeError("Error querying plan output modes.")
+            # back to C/python ndarray.shape order (nZ, nY, nX)
+            self._n_modes_out = tuple(int(_out[i]) for i in range(self._dim))[::-1]
+        else:
+            self._n_modes_out = self._n_modes
 
     def setpts(
         self,
@@ -365,7 +393,7 @@ class Plan:
         req_data_shape: tuple[int, ...]
         if self._type == 1:
             req_data_shape = (self._n_trans, self._nj)
-            req_out_shape = self._n_modes
+            req_out_shape = self._n_modes_out
         elif self._type == 2:
             req_data_shape = (self._n_trans, *self._n_modes)
             req_out_shape = (self._nj,)

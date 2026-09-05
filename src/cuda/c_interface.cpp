@@ -131,6 +131,32 @@ int cufinufft_destroy(cufinufft_plan d_plan) {
   });
 }
 
+// NB: no shared template helper here -- this whole block has C linkage, so the
+// two precisions are spelled out, as elsewhere in this file.
+int cufinufftf_get_out_modes(cufinufftf_plan d_plan, int64_t *n_modes) {
+  return safe_finufft_call([&]() {
+    if (!d_plan) throw finufft::exception(FINUFFT_ERR_PLAN_NOTVALID);
+    if (!n_modes) throw finufft::exception(FINUFFT_ERR_INVALID_ARGUMENT);
+    const auto *plan = (cufinufft_plan_t<float> *)d_plan;
+    // type 3 has no mode grid: its mstu is never set, so out_extent() would
+    // silently hand back zeros. Reject rather than mislead.
+    if (plan->nufft_type() == 3) throw finufft::exception(FINUFFT_ERR_TYPE_NOTVALID);
+    const auto ext = plan->out_extent();
+    for (int idim = 0; idim < 3; ++idim) n_modes[idim] = (int64_t)ext[idim];
+  });
+}
+
+int cufinufft_get_out_modes(cufinufft_plan d_plan, int64_t *n_modes) {
+  return safe_finufft_call([&]() {
+    if (!d_plan) throw finufft::exception(FINUFFT_ERR_PLAN_NOTVALID);
+    if (!n_modes) throw finufft::exception(FINUFFT_ERR_INVALID_ARGUMENT);
+    const auto *plan = (cufinufft_plan_t<double> *)d_plan;
+    if (plan->nufft_type() == 3) throw finufft::exception(FINUFFT_ERR_TYPE_NOTVALID);
+    const auto ext = plan->out_extent();
+    for (int idim = 0; idim < 3; ++idim) n_modes[idim] = (int64_t)ext[idim];
+  });
+}
+
 void cufinufft_default_opts(cufinufft_opts *opts)
 /*
     Sets the default options in cufinufft_opts. This must be called
@@ -153,6 +179,7 @@ void cufinufft_default_opts(cufinufft_opts *opts)
   opts->modeord              = 0;
   opts->gpu_device_id        = 0;
   opts->gpu_spreadinterponly = 0;
+  opts->gpu_no_cropping      = 0;
 
   // algorithm performance opts...
   opts->gpu_method         = 0;

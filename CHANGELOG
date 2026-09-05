@@ -3,6 +3,16 @@ If not stated, FINUFFT is assumed (old cuFINUFFT <=1.3 is listed separately).
 
 v2.6.0-dev
 
+* New cuFINUFFT option `opts.gpu_no_cropping` (type 1 only): skips the crop of the
+  deconvolved fine grid, writing the whole `nf1*nf2*nf3` upsampled grid to `fk` instead
+  of the central `ms*mt*mu` modes. No new kernel or coefficient math was needed --
+  `fwkerhalf` is already computed over the full `nf/2+1` half-band, and `deconv_nd` is
+  simply launched with the fine-grid extent. New `cufinufft{,f}_get_out_modes` reports a
+  plan's effective output extent, since callers cannot predict `nf` (it depends on
+  `upsampfac`, kernel width and 2/3/5-smooth rounding); it is exposed as
+  `Plan.n_modes_out` in Python and `plan.n_modes_out` in MATLAB. The central `ms*mt*mu`
+  block of the output is identical to what a cropped plan returns. Covered by
+  `test/cuda/cufinufft_nocrop_test.cu`. (Chen)
 * Fixed CPU type 3 honoring `opts.spreadinterponly`: the option is documented to affect
   types 1 and 2 only, and cuFINUFFT already ignored it for type 3, but the CPU plan
   applied it, so a type-3 call with the flag set returned wrong values instead of the

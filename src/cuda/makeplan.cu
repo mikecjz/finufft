@@ -2,6 +2,7 @@
 // Mirrors CPU src/makeplan.cpp. Also hosts the cufft_plan RAII destructor,
 // which is tied to plan setup.
 
+#include <cstdint>
 #include <iostream>
 
 #include <cufinufft/contrib/helper_cuda.h>
@@ -257,6 +258,22 @@ cufinufft_plan_t<T>::cufinufft_plan_t(int type_, int dim_, const int *nmodes, in
             __func__, opts.gpu_maxbatchsize);
     throw finufft::exception(FINUFFT_ERR_INVALID_ARGUMENT);
   }
+  if (opts.gpu_no_cropping) {
+    if (type != 1) {
+      fprintf(stderr,
+              "[%s] gpu_no_cropping is only valid for type 1 (got type %d).\n",
+              __func__, type);
+      throw finufft::exception(FINUFFT_ERR_INVALID_ARGUMENT);
+    }
+    if (opts.gpu_spreadinterponly) {
+      // that mode sets nf123 = mstu and never builds fwkerhalf, so there is no
+      // fine grid to leave uncropped and no kernel FT to deconvolve with.
+      fprintf(stderr,
+              "[%s] gpu_no_cropping is incompatible with gpu_spreadinterponly.\n",
+              __func__);
+      throw finufft::exception(FINUFFT_ERR_INVALID_ARGUMENT);
+    }
+  }
 
   if (!warned_pools && !gpu.memory_pools_supported && opts.gpu_stream != nullptr) {
     fprintf(stderr,
@@ -351,6 +368,23 @@ cufinufft_plan_t<T>::cufinufft_plan_t(int type_, int dim_, const int *nmodes, in
                nf123[2]);
     }
     nf = nf123[0] * nf123[1] * nf123[2];
+
+    if (opts.gpu_no_cropping) {
+      // The user's fk buffer is now the whole fine grid, so its element count
+      // must fit the int32 CUFINUFFT_BIGINT used for the fk batch stride.
+      // is_invalid_mode_array() only bounded ms*mt*mu.
+      const int64_t nf_tot = int64_t(nf123[0]) * nf123[1] * nf123[2];
+      if (nf_tot > INT32_MAX) {
+        fprintf(stderr,
+                "[%s] gpu_no_cropping: fine grid (%d, %d, %d) has %lld points, "
+                "exceeding the %d limit on the output array.\n",
+                __func__, nf123[0], nf123[1], nf123[2], (long long)nf_tot, INT32_MAX);
+        throw finufft::exception(FINUFFT_ERR_NDATA_NOTVALID);
+      }
+      if (opts.debug)
+        printf("[cufinufft] no_cropping: output extent (%d, %d, %d) = %lld modes\n",
+               nf123[0], nf123[1], nf123[2], (long long)nf_tot);
+    }
 
     // The choice is L2-aware, so it waits for nf; type 3 stays 0 here and is resolved in
     // setpts, which owns the allocation it bounds (#846).

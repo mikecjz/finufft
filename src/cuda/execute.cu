@@ -72,9 +72,16 @@ void cufinufft_plan_t<T>::deconvolve_nd<modeord, ndim>(
     Melody Shih 11/21/21
 */
 {
+  // With opts.gpu_no_cropping (type 1 only) the extent is the whole fine grid,
+  // so every fw point is deconvolved instead of just the central mstu block.
+  // deconv_nd needs no change: at extent==nf123 the index map stays a bijection
+  // (modeord=0 wraps pivot in [-nf/2,nf/2) onto [0,nf); modeord=1 is the
+  // identity) and the kernel index |pivot| <= nf/2 is still within the
+  // nf/2+1-long fwkerhalf.
+  const auto extent = out_extent();
   int nmodes = 1, nftot = 1;
   for (int idim = 0; idim < ndim; ++idim) {
-    nmodes *= mstu[idim];
+    nmodes *= extent[idim];
     nftot *= nf123[idim];
   }
 
@@ -85,7 +92,7 @@ void cufinufft_plan_t<T>::deconvolve_nd<modeord, ndim>(
 
   for (int t = 0; t < blksize; t++)
     deconv_nd<T, modeord, ndim><<<(nmodes + 256 - 1) / 256, 256, 0, stream>>>(
-        mstu, nf123, fw + t * nftot, fk + t * nmodes, dethrust(fwkerhalf), fw2fk);
+        extent, nf123, fw + t * nftot, fk + t * nmodes, dethrust(fwkerhalf), fw2fk);
 }
 
 template<typename T>
@@ -119,8 +126,8 @@ void cufinufft_plan_t<T>::execute_type1(cuda_complex<T> *d_c, cuda_complex<T> *d
 {
   assert(spopts.spread_direction == 1);
 
-  int nmodes = 1;
-  for (int idim = 0; idim < dim; ++idim) nmodes *= mstu[idim];
+  // nmodes_out() == prod(mstu), or prod(nf123) under opts.gpu_no_cropping.
+  const int nmodes = nmodes_out();
   // Uninitialized: spread memsets fw below. Size 0 when spreading only, which spreads
   // straight into f.
   const bool spread_only = opts.gpu_spreadinterponly;
